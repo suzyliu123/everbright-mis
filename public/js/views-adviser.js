@@ -575,11 +575,12 @@ async function renderAdviserActivityLeads(actId) {
 
   <div class="card wechat-count-card">
     <div class="flex aic jb">
-      <div class="section-title" style="margin:0">My New WeChat Added</div>
+      <div class="section-title" style="margin:0">My WeChat Added</div>
       <div style="text-align:right">
         <div class="wc-number">${wc}</div>
       </div>
     </div>
+    <button class="btn btn-primary btn-sm" style="margin-top:12px;width:100%" onclick="showWeChatLogModal('${actId}')">+ Log WeChat Added</button>
   </div>
 
   <div class="tabs">
@@ -610,6 +611,68 @@ async function renderAdviserActivityLeads(actId) {
 
   html += `</div>`;
   return html;
+}
+
+// ============ WECHAT LOG MODAL (Adviser) ============
+function showWeChatLogModal(actId) {
+  closeModal();
+  const today = new Date().toISOString().slice(0, 10);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <h3><button class="modal-close" onclick="closeModal()">&times;</button>Log WeChat Added</h3>
+      <form onsubmit="event.preventDefault(); saveWeChatLog('${actId}');">
+        <div class="form-group">
+          <label>How many WeChat contacts added? *</label>
+          <input type="number" id="wc-count" placeholder="e.g. 12" min="1" required style="font-size:18px;padding:14px">
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="wc-date" value="${today}">
+        </div>
+        <div class="form-group">
+          <label>Note (optional)</label>
+          <input type="text" id="wc-note" placeholder="e.g. Scanned at expo booth" style="padding:12px">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn-save">Save</button>
+        </div>
+      </form>
+    </div>`;
+  overlay.addEventListener('click', closeModal);
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById('wc-count') && document.getElementById('wc-count').focus(), 50);
+}
+
+async function saveWeChatLog(actId) {
+  const count = parseInt(document.getElementById('wc-count').value) || 0;
+  const dateAdded = document.getElementById('wc-date').value || new Date().toISOString().slice(0, 10);
+  const note = document.getElementById('wc-note').value.trim();
+
+  if (count <= 0) {
+    showToast('Please enter a valid number', 'error');
+    return;
+  }
+
+  try {
+    await DataService.addWeChatRecord({
+      activityId: actId,
+      adviserId: Auth.currentUser.uid,
+      adviserName: Auth.displayName(),
+      count,
+      dateAdded,
+      source: 'Manual',
+      notes: note
+    });
+    closeModal();
+    showToast('WeChat added recorded!', 'success');
+    render();
+  } catch (err) {
+    showToast('Failed to save: ' + err.message, 'error');
+  }
 }
 
 // ============ ADVISER QR CODE ============

@@ -262,6 +262,7 @@ async function renderMgmtActivitySummary(actId) {
   <div class="page-head"><h2>${esc(activity.name)}</h2><div>
     <button class="btn btn-ghost btn-sm" onclick="Router.goBack()">&#8592; Back</button>
     <button class="btn btn-ghost btn-sm" onclick="Router.goHome()">&#8962; Home</button>
+    <button class="btn btn-primary btn-sm" onclick="showEditActivityModal('${actId}')">&#9998; Edit</button>
   </div></div>
 
   <div class="card">
@@ -301,6 +302,21 @@ async function renderMgmtActivitySummary(actId) {
           <td style="font-weight:500">${esc(a.name)}</td>
           <td>${a.total}</td><td>${a.submitted}</td><td style="color:var(--success)">${a.settled}</td>
           <td>${fmtM(a.settlementAmount)}</td><td>${fmtMF(a.totalPremium)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>` : ''}
+
+  ${weChatRecords.length > 0 ? `<div class="card">
+    <div class="section-title">WeChat Added Log (${totalWeChat})</div>
+    <div class="data-table" style="width:100%;overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr><th>Adviser</th><th>Date</th><th>Count</th><th>Note</th></tr></thead>
+        <tbody>${weChatRecords.map(r => `<tr>
+          <td style="font-weight:500">${esc(r.adviserName || '—')}</td>
+          <td>${fmtD(r.dateAdded)}</td>
+          <td style="color:var(--teal);font-weight:600">+${r.count}</td>
+          <td style="color:var(--text-muted)">${esc(r.notes || '-')}</td>
         </tr>`).join('')}</tbody>
       </table>
     </div>
@@ -835,6 +851,141 @@ async function saveNewActivity() {
     render();
   } catch (err) {
     showToast('Failed to create activity: ' + err.message, 'error');
+  }
+}
+
+// ============ EDIT ACTIVITY MODAL ============
+async function showEditActivityModal(actId) {
+  closeModal();
+
+  let activity = null, advisers = [];
+  try {
+    [activity, advisers] = await Promise.all([
+      DataService.getActivity(actId),
+      DataService.getAdvisers()
+    ]);
+  } catch (e) {
+    console.error('Failed to load activity/advisers:', e);
+  }
+  if (!activity) {
+    showToast('Activity not found', 'error');
+    return;
+  }
+
+  const assignedIds = activity.assignedAdvisers || [];
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-wide" onclick="event.stopPropagation()">
+      <h3><button class="modal-close" onclick="closeModal()">&times;</button>Edit Activity</h3>
+      <form onsubmit="event.preventDefault(); saveEditActivity('${actId}');">
+        <div class="form-group">
+          <label>Activity Name *</label>
+          <input type="text" id="act-name" placeholder="e.g. Chinese Expo 2026" value="${esc(activity.name || '')}" required>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <div class="seg" id="act-category-seg">
+            <div class="seg-item ${activity.category !== 'ongoing' ? 'active' : ''}" data-value="event" onclick="selSeg(this)">Event</div>
+            <div class="seg-item ${activity.category === 'ongoing' ? 'active' : ''}" data-value="ongoing" onclick="selSeg(this)">Ongoing Source</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <div class="seg seg-wrap" id="act-type-seg">
+            ${ACT_TYPES_LIST.map(t => `<div class="seg-item ${t.key === activity.type ? 'active' : ''}" data-value="${t.key}" onclick="selSeg(this)">${t.label}</div>`).join('')}
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Start Date *</label>
+            <input type="date" id="act-start" value="${activity.startDate || ''}" required>
+          </div>
+          <div class="form-group">
+            <label>End Date</label>
+            <input type="date" id="act-end" value="${activity.endDate || ''}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" id="act-location" placeholder="e.g. ASB Showgrounds, Auckland" value="${esc(activity.location || '')}">
+        </div>
+        <div class="form-group">
+          <label>Marketing Budget (NZD)</label>
+          <input type="number" id="act-budget" placeholder="5000" min="0" step="100" value="${activity.budget || 0}">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <div class="seg" id="act-status-seg">
+            <div class="seg-item ${activity.status === 'active' ? 'active' : ''}" data-value="active" onclick="selSeg(this)">Active</div>
+            <div class="seg-item ${activity.status === 'completed' ? 'active' : ''}" data-value="completed" onclick="selSeg(this)">Completed</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="act-description" rows="3" placeholder="Brief description..." style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;">${esc(activity.description || '')}</textarea>
+        </div>
+        <div class="form-group">
+          <label style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:10px;display:block">Assign Advisers</label>
+          <div class="assign-adviser-list">
+            ${advisers.map(a => {
+              const uid = a.uid || a.id;
+              const checked = assignedIds.includes(uid) ? 'checked' : '';
+              return `<div class="assign-adviser-row">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0">${init2(a.displayName || a.email || '')}</div>
+                  <div style="font-size:13px;font-weight:500;color:var(--text)">${esc(a.displayName || a.email)}</div>
+                </div>
+                <input type="checkbox" class="adv-checkbox" data-uid="${uid}" ${checked} style="width:18px;height:18px;cursor:pointer">
+              </div>`;
+            }).join('')}
+            ${advisers.length === 0 ? '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">No advisers found</div>' : ''}
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn-save">Save Changes</button>
+        </div>
+      </form>
+    </div>`;
+  overlay.addEventListener('click', closeModal);
+  document.body.appendChild(overlay);
+}
+
+async function saveEditActivity(actId) {
+  const name = document.getElementById('act-name').value.trim();
+  const category = getSegValue('act-category-seg') || 'event';
+  const type = getSegValue('act-type-seg') || 'expo';
+  const status = getSegValue('act-status-seg') || 'active';
+  const startDate = document.getElementById('act-start').value;
+  const endDate = document.getElementById('act-end').value;
+  const location = document.getElementById('act-location').value.trim();
+  const budget = parseInt(document.getElementById('act-budget').value) || 0;
+  const description = document.getElementById('act-description').value.trim();
+
+  const assignedAdvisers = [];
+  document.querySelectorAll('.adv-checkbox:checked').forEach(cb => {
+    assignedAdvisers.push(cb.getAttribute('data-uid'));
+  });
+
+  if (!name || !startDate) {
+    showToast('Please fill all required fields', 'error');
+    return;
+  }
+
+  try {
+    await DataService.updateActivity(actId, {
+      name, category, type, status,
+      startDate, endDate, location, budget, description,
+      assignedAdvisers, channel: type
+    });
+    closeModal();
+    showToast('Activity updated successfully!', 'success');
+    render();
+  } catch (err) {
+    showToast('Failed to update activity: ' + err.message, 'error');
   }
 }
 

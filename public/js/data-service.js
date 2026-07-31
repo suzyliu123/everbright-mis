@@ -56,6 +56,13 @@ const DataService = {
     return { id: ref.id, ...activity };
   },
 
+  async updateActivity(actId, data) {
+    await db.collection('activities').doc(actId).update({
+      ...data,
+      updatedAt: new Date().toISOString()
+    });
+  },
+
   // ============ LEADS ============
   async getLeads(filters = {}, pageSize = 50, startAfterDoc = null) {
     let query = db.collection('leads');
@@ -166,6 +173,16 @@ const DataService = {
   async getTotalWeChatByActivity(actId) {
     const records = await this.getWeChatRecords({ activityId: actId });
     return records.reduce((sum, r) => sum + (r.count || 0), 0);
+  },
+
+  async addWeChatRecord(data) {
+    const ref = db.collection('wechat_records').doc();
+    const rec = {
+      ...data,
+      createdAt: new Date().toISOString()
+    };
+    await ref.set(rec);
+    return { id: ref.id, ...rec };
   },
 
   // ============ USERS / ADVISERS ============
