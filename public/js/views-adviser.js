@@ -56,7 +56,7 @@ async function renderAdviserDashboard() {
   // Get my activities
   const allActs = await DataService.getActivities({});
   const myActs = allActs.filter(a => {
-    const advisers = a.advisers || [];
+    const advisers = a.assignedAdvisers || [];
     return advisers.includes(uid) && (a.status === 'active' || a.status === 'planned');
   });
 
@@ -160,7 +160,7 @@ async function renderAdviserAddLead() {
   const allActs = await DataService.getActivities({ status: 'active' });
   // Find activities assigned to this adviser that are events
   const myActiveEvents = allActs.filter(a => {
-    const advisers = a.advisers || [];
+    const advisers = a.assignedAdvisers || [];
     return advisers.includes(uid) && a.category === 'event';
   });
 
@@ -516,7 +516,7 @@ async function renderAdviserActivities() {
   const uid = Auth.currentUser.uid;
   const allActs = await DataService.getActivities({});
   const myActs = allActs.filter(a => {
-    const advisers = a.advisers || [];
+    const advisers = a.assignedAdvisers || [];
     return advisers.includes(uid);
   });
 
