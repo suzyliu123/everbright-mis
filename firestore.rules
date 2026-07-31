@@ -28,8 +28,8 @@ service cloud.firestore {
     match /users/{userId} {
       // Any signed-in user can read the users list (needed for adviser dropdowns)
       allow get, list: if isSignedIn();
-      // Only admin can create/update/delete users
-      allow create, update, delete: if isAdmin();
+      // Admin or Management can create/update/delete users
+      allow create, update, delete: if hasMgmtAccess();
     }
 
     // ============ ACTIVITIES ============
