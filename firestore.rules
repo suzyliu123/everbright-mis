@@ -7,15 +7,18 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
-    // Role-based checks (active once Cloud Functions deploy sets custom claims)
+    // Read role directly from the user's own document (no custom claims needed)
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
     function isAdmin() {
-      return request.auth.token.role == 'admin';
+      return getUserRole() == 'admin';
     }
     function isManager() {
-      return request.auth.token.role == 'management';
+      return getUserRole() == 'management';
     }
     function isAdviser() {
-      return request.auth.token.role == 'adviser';
+      return getUserRole() == 'adviser';
     }
     function hasMgmtAccess() {
       return isAdmin() || isManager();
@@ -23,27 +26,34 @@ service cloud.firestore {
 
     // ============ USERS / ADVISERS ============
     match /users/{userId} {
+      // Any signed-in user can read the users list (needed for adviser dropdowns)
       allow get, list: if isSignedIn();
+      // Only admin can create/update/delete users
       allow create, update, delete: if isAdmin();
     }
 
     // ============ ACTIVITIES ============
     match /activities/{actId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow create, update, delete: if hasMgmtAccess();
     }
 
     // ============ LEADS ============
     match /leads/{leadId} {
-      allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn();
+      // Mgmt: full access. Adviser: read/write only own assigned leads
+      allow get, list: if hasMgmtAccess() ||
+        (isAdviser() && resource.data.assignedAdviser == request.auth.uid);
+      allow create: if hasMgmtAccess() ||
+        (isAdviser() && request.resource.data.assignedAdviser == request.auth.uid);
+      allow update: if hasMgmtAccess() ||
+        (isAdviser() && resource.data.assignedAdviser == request.auth.uid);
       allow delete: if isAdmin();
     }
 
     // ============ WECHAT RECORDS ============
     match /wechat_records/{recId} {
-      allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn();
+      allow get, list: if hasMgmtAccess() || isAdviser();
+      allow create, update: if hasMgmtAccess() || isAdviser();
       allow delete: if isAdmin();
     }
 
