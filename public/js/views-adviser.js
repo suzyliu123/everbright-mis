@@ -513,7 +513,7 @@ async function saveSettlement(leadId) {
 
 // ============ ADVISER ACTIVITIES ============
 async function renderAdviserActivities() {
-  const uid = Auth.currentUser.uid;
+  const uid = Auth.currentUser ? Auth.currentUser.uid : 'NO_USER';
   const allActs = await DataService.getActivities({});
   const myActs = allActs.filter(a => {
     const advisers = a.assignedAdvisers || [];
@@ -522,7 +522,18 @@ async function renderAdviserActivities() {
 
   let html = adviserHeader('My Activities') + `<div class="content">`;
 
+  // DEBUG: show diagnostic info when empty
   if (myActs.length === 0) {
+    const sampleAct = allActs[0] || {};
+    const sampleAdvisers = sampleAct.assignedAdvisers || 'FIELD_MISSING';
+    html += `<div style="background:#fff3cd;padding:12px;margin-bottom:12px;border-radius:8px;font-size:13px;color:#856404;">
+      <strong>🔍 Debug Info:</strong><br>
+      Your UID: <code>${uid}</code><br>
+      Total activities in DB: ${allActs.length}<br>
+      Activities matching you: ${myActs.length}<br>
+      First activity: "${sampleAct.name || 'N/A'}"<br>
+      Its assignedAdvisers: <code>${JSON.stringify(sampleAdvisers)}</code>
+    </div>`;
     html += `<div class="empty">No activities assigned to you yet</div>`;
     html += `</div>`;
     return html;
