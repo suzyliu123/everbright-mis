@@ -7,6 +7,7 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
+    // Role-based checks (active once Cloud Functions deploy sets custom claims)
     function isAdmin() {
       return request.auth.token.role == 'admin';
     }
@@ -16,54 +17,39 @@ service cloud.firestore {
     function isAdviser() {
       return request.auth.token.role == 'adviser';
     }
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
     function hasMgmtAccess() {
       return isAdmin() || isManager();
     }
 
     // ============ USERS / ADVISERS ============
     match /users/{userId} {
-      // Admin/Manager: full read. Adviser: read own profile only
-      allow get: if isSignedIn() && (hasMgmtAccess() || isOwner(userId));
-      allow list: if hasMgmtAccess();
-      // Only admin can create/update/delete users
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
 
     // ============ ACTIVITIES ============
     match /activities/{actId} {
-      // Management can read all; advisers read active activities assigned to them
-      allow get: if hasMgmtAccess() || 
-        (isAdviser() && resource.data.status == 'active');
-      allow list: if hasMgmtAccess() || isAdviser();
-      allow create, update, delete: if hasMgmtAccess();
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
 
     // ============ LEADS ============
     match /leads/{leadId} {
-      // Management: full CRUD. Adviser: read/write only leads assigned to them
-      allow get, list: if hasMgmtAccess() || 
-        (isAdviser() && resource.data.assignedAdviser == request.auth.uid);
-      allow create: if hasMgmtAccess() || 
-        (isAdviser() && request.resource.data.assignedAdviser == request.auth.uid);
-      allow update: if hasMgmtAccess() || 
-        (isAdviser() && resource.data.assignedAdviser == request.auth.uid);
+      allow get, list: if isSignedIn();
+      allow create, update: if isSignedIn();
       allow delete: if isAdmin();
     }
 
     // ============ WECHAT RECORDS ============
     match /wechat_records/{recId} {
-      allow get, list: if hasMgmtAccess();
-      allow create: if hasMgmtAccess() || isAdviser();
-      allow update: if hasMgmtAccess();
+      allow get, list: if isSignedIn();
+      allow create, update: if isSignedIn();
       allow delete: if isAdmin();
     }
 
     // ============ SYSTEM SETTINGS ============
     match /settings/{settingId} {
-      allow get, list: if hasMgmtAccess();
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
   }
