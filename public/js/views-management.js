@@ -262,7 +262,10 @@ async function renderMgmtActivitySummary(actId) {
     if (!assignedIds.includes(advId)) continue;
     const advLeads = leads.filter(l => l.assignedAdviser === advId);
     const s = DataService.computeLeadStats(advLeads);
-    advPerf.push({ uid: advId, name: adv.displayName, ...s });
+    const advWeChat = weChatRecords
+      .filter(r => (r.adviserId || r.adviserName) === advId)
+      .reduce((sum, r) => sum + (r.count || 0), 0);
+    advPerf.push({ uid: advId, name: adv.displayName, weChat: advWeChat, ...s });
   }
   advPerf.sort((a, b) => b.settlementAmount - a.settlementAmount);
 
@@ -322,9 +325,10 @@ async function renderMgmtActivitySummary(actId) {
     <div class="section-title">Adviser Performance (${advPerf.length})</div>
     <div class="data-table" style="width:100%;overflow-x:auto">
       <table style="width:100%;border-collapse:collapse">
-        <thead><tr><th>Adviser</th><th>Leads</th><th>Submitted</th><th>Settled</th><th>Loan Amt</th><th>Ins API</th></tr></thead>
+        <thead><tr><th>Adviser</th><th>WeChat Added</th><th>Leads</th><th>Submitted</th><th>Settled</th><th>Loan Amt</th><th>Ins API</th></tr></thead>
         <tbody>${advPerf.map(a => `<tr class="clickable-row" onclick="Router.navigate('mgmt-adv-act-summary?actId=${actId}&advId=${a.uid}')">
           <td style="font-weight:500">${esc(a.name)}</td>
+          <td style="color:var(--teal);font-weight:600">${a.weChat}</td>
           <td>${a.total}</td><td>${a.submitted}</td><td style="color:var(--success)">${a.settled}</td>
           <td>${fmtM(a.settlementAmount)}</td><td>${fmtMF(a.totalPremium)}</td>
         </tr>`).join('')}</tbody>
