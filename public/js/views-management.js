@@ -193,7 +193,10 @@ async function renderMgmtActivities() {
   const allLeads = allLeadsRes.leads || allLeadsRes;
 
   return `
-  <div class="page-head"><h2>Activities</h2><div class="ph-actions"><button class="btn btn-primary btn-sm" onclick="showNewActivityModal()">+ New</button></div></div>
+  <div class="page-head"><h2>Activities</h2><div class="ph-actions">
+    <button class="btn btn-danger btn-sm" id="delActsBtn" onclick="confirmDeleteActivities()" ${(S.selActs||[]).length ? '' : 'disabled'}>&#128465; Delete${(S.selActs||[]).length ? ' ('+(S.selActs||[]).length+')' : ''}</button>
+    <button class="btn btn-primary btn-sm" onclick="showNewActivityModal()">+ New</button>
+  </div></div>
 
   <div class="fbar">
     <input placeholder="Search activities..." value="${S.search||''}" oninput="S.search=this.value;render()" style="min-width:180px">
@@ -215,14 +218,19 @@ async function renderMgmtActivities() {
     const isEvent = a.category === 'event';
     const typeLabel = ACT_TYPES_OBJ[a.type] || a.type || a.channel || '-';
     return `<div class="card card-tap" onclick="Router.navigate('mgmt-activity-summary?id=${a.id}')" style="margin-bottom:10px">
-      <div class="flex jb aic mb2"><div class="fs2">${esc(a.name)}</div>${badge(isEvent ? (a.status==='completed'?'green':a.status==='active'?'blue':'gray') : 'blue', isEvent ? (a.status==='completed'?'Ended':a.status==='active'?'Live':'Planned') : 'Ongoing')}</div>
-      <div class="ts tg mb2">${typeLabel} &middot; ${isEvent ? fmtD(a.startDate) : 'Always live'} &middot; ${esc(a.location||'-')}${a.budget>0 ? ' &middot; Budget '+fmtMF(a.budget) : ''}</div>
-      <div class="summary-line">
-        <div class="summary-item"><div class="si-val">${wc}</div><div class="si-lbl">WeChat</div></div>
-        <div class="summary-item"><div class="si-val">${s.total}</div><div class="si-lbl">Leads</div></div>
-        <div class="summary-item"><div class="si-val" style="color:var(--purple)">${s.submitted}</div><div class="si-lbl">Submitted</div></div>
-        <div class="summary-item"><div class="si-val" style="color:var(--success)">${s.settled}</div><div class="si-lbl">Settled</div></div>
-        <div class="summary-item"><div class="si-val" style="font-size:16px;color:var(--primary)">${fmtM(s.settlementAmount)}</div><div class="si-lbl">Loan</div></div>
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div onclick="event.stopPropagation()" style="padding-top:2px"><input type="checkbox" onchange="toggleSelAct('${a.id}', this.checked)" ${(S.selActs||[]).includes(a.id)?'checked':''}></div>
+        <div style="flex:1;min-width:0">
+          <div class="flex jb aic mb2"><div class="fs2">${esc(a.name)}</div>${badge(isEvent ? (a.status==='completed'?'green':a.status==='active'?'blue':'gray') : 'blue', isEvent ? (a.status==='completed'?'Ended':a.status==='active'?'Live':'Planned') : 'Ongoing')}</div>
+          <div class="ts tg mb2">${typeLabel} &middot; ${isEvent ? fmtD(a.startDate) : 'Always live'} &middot; ${esc(a.location||'-')}${a.budget>0 ? ' &middot; Budget '+fmtMF(a.budget) : ''}</div>
+          <div class="summary-line">
+            <div class="summary-item"><div class="si-val">${wc}</div><div class="si-lbl">WeChat</div></div>
+            <div class="summary-item"><div class="si-val">${s.total}</div><div class="si-lbl">Leads</div></div>
+            <div class="summary-item"><div class="si-val" style="color:var(--purple)">${s.submitted}</div><div class="si-lbl">Submitted</div></div>
+            <div class="summary-item"><div class="si-val" style="color:var(--success)">${s.settled}</div><div class="si-lbl">Settled</div></div>
+            <div class="summary-item"><div class="si-val" style="font-size:16px;color:var(--primary)">${fmtM(s.settlementAmount)}</div><div class="si-lbl">Loan</div></div>
+          </div>
+        </div>
       </div>
     </div>`;
   }).join('')}
@@ -419,7 +427,9 @@ async function renderMgmtAdvisers() {
   if (term) filtered = filtered.filter(a => (a.displayName||'').toLowerCase().includes(term) || (a.email||'').toLowerCase().includes(term));
 
   return `
-  <div class="page-head"><h2>Advisers</h2></div>
+  <div class="page-head"><h2>Advisers</h2><div class="ph-actions">
+    <button class="btn btn-danger btn-sm" id="delAdvsBtn" onclick="confirmDeleteAdvisers()" ${(S.selAdvs||[]).length ? '' : 'disabled'}>&#128465; Delete${(S.selAdvs||[]).length ? ' ('+(S.selAdvs||[]).length+')' : ''}</button>
+  </div></div>
 
   <div class="fbar">
     <input placeholder="Search advisers..." value="${S.search||''}" oninput="S.search=this.value;render()" style="min-width:180px">
@@ -434,17 +444,22 @@ async function renderMgmtAdvisers() {
     const actCount = activities.filter(a => (a.assignedAdvisers || []).includes(advId)).length;
     const wcCount = weChatRecords.filter(w => w.adviserId === advId).reduce((sum, r) => sum + (r.count || 0), 0);
     return `<div class="card card-tap" onclick="Router.navigate('mgmt-adviser-profile?id=${advId}')" style="margin-bottom:10px">
-      <div class="flex jb aic mb2">
-        <div class="flex aic g2"><div class="av">${init2(ad.displayName||'')}</div>
-        <div><div class="fs2">${esc(ad.displayName)}</div><div class="ts tg">${esc(ad.email||'')}</div></div></div>
-        <div>${badge(ad.status==='active'?'green':'gray', ad.status||'active')}</div>
-      </div>
-      <div class="summary-line">
-        <div class="summary-item"><div class="si-val">${actCount}</div><div class="si-lbl">Activities</div></div>
-        <div class="summary-item"><div class="si-val">${wcCount}</div><div class="si-lbl">WeChat</div></div>
-        <div class="summary-item"><div class="si-val">${s.total}</div><div class="si-lbl">Leads</div></div>
-        <div class="summary-item"><div class="si-val" style="color:var(--success)">${s.settled}</div><div class="si-lbl">Settled</div></div>
-        <div class="summary-item"><div class="si-val" style="font-size:16px;color:var(--primary)">${fmtM(s.settlementAmount)}</div><div class="si-lbl">Loan</div></div>
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div onclick="event.stopPropagation()" style="padding-top:4px"><input type="checkbox" onchange="toggleSelAdv('${advId}', this.checked)" ${(S.selAdvs||[]).includes(advId)?'checked':''}></div>
+        <div style="flex:1;min-width:0">
+          <div class="flex jb aic mb2">
+            <div class="flex aic g2"><div class="av">${init2(ad.displayName||'')}</div>
+            <div><div class="fs2">${esc(ad.displayName)}</div><div class="ts tg">${esc(ad.email||'')}</div></div></div>
+            <div>${badge(ad.status==='active'?'green':'gray', ad.status||'active')}</div>
+          </div>
+          <div class="summary-line">
+            <div class="summary-item"><div class="si-val">${actCount}</div><div class="si-lbl">Activities</div></div>
+            <div class="summary-item"><div class="si-val">${wcCount}</div><div class="si-lbl">WeChat</div></div>
+            <div class="summary-item"><div class="si-val">${s.total}</div><div class="si-lbl">Leads</div></div>
+            <div class="summary-item"><div class="si-val" style="color:var(--success)">${s.settled}</div><div class="si-lbl">Settled</div></div>
+            <div class="summary-item"><div class="si-val" style="font-size:16px;color:var(--primary)">${fmtM(s.settlementAmount)}</div><div class="si-lbl">Loan</div></div>
+          </div>
+        </div>
       </div>
     </div>`;
   }).join('')}
@@ -986,6 +1001,68 @@ async function saveEditActivity(actId) {
     render();
   } catch (err) {
     showToast('Failed to update activity: ' + err.message, 'error');
+  }
+}
+
+// ============ BULK DELETE (Activities & Advisers) ============
+// Per product decision, deleting KEEPS the Leads/WeChat records (they become
+// unassigned) — only the activity/adviser record itself is removed.
+
+function toggleSelAct(id, checked) {
+  S.selActs = S.selActs || [];
+  if (checked) { if (!S.selActs.includes(id)) S.selActs.push(id); }
+  else { S.selActs = S.selActs.filter(x => x !== id); }
+  updateDelActsBtn();
+}
+function updateDelActsBtn() {
+  const btn = document.getElementById('delActsBtn');
+  if (!btn) return;
+  const n = (S.selActs || []).length;
+  btn.disabled = n === 0;
+  btn.innerHTML = `&#128465; Delete${n ? ' (' + n + ')' : ''}`;
+}
+
+async function confirmDeleteActivities() {
+  const ids = S.selActs || [];
+  if (!ids.length) { showToast('Select activities to delete first', 'info'); return; }
+  const ok = confirm(`Delete ${ids.length} activit${ids.length > 1 ? 'ies' : 'y'}?\n\nTheir Leads and WeChat records will be KEPT (shown as unassigned).\nThis cannot be undone.`);
+  if (!ok) return;
+  try {
+    await DataService.deleteActivities(ids);
+    S.selActs = [];
+    showToast(`Deleted ${ids.length} activit${ids.length > 1 ? 'ies' : 'y'}`, 'success');
+    render();
+  } catch (err) {
+    showToast('Delete failed: ' + err.message, 'error');
+  }
+}
+
+function toggleSelAdv(id, checked) {
+  S.selAdvs = S.selAdvs || [];
+  if (checked) { if (!S.selAdvs.includes(id)) S.selAdvs.push(id); }
+  else { S.selAdvs = S.selAdvs.filter(x => x !== id); }
+  updateDelAdvsBtn();
+}
+function updateDelAdvsBtn() {
+  const btn = document.getElementById('delAdvsBtn');
+  if (!btn) return;
+  const n = (S.selAdvs || []).length;
+  btn.disabled = n === 0;
+  btn.innerHTML = `&#128465; Delete${n ? ' (' + n + ')' : ''}`;
+}
+
+async function confirmDeleteAdvisers() {
+  const ids = S.selAdvs || [];
+  if (!ids.length) { showToast('Select advisers to delete first', 'info'); return; }
+  const ok = confirm(`Delete ${ids.length} adviser${ids.length > 1 ? 's' : ''}?\n\nThey will be removed from all activity assignments. Their Leads and WeChat records will be KEPT (shown as unassigned). Their app login is disabled.\nThis cannot be undone.`);
+  if (!ok) return;
+  try {
+    await DataService.deleteAdvisers(ids);
+    S.selAdvs = [];
+    showToast(`Deleted ${ids.length} adviser${ids.length > 1 ? 's' : ''}`, 'success');
+    render();
+  } catch (err) {
+    showToast('Delete failed: ' + err.message, 'error');
   }
 }
 

@@ -63,6 +63,42 @@ const DataService = {
     });
   },
 
+  // ============ DELETE (Management only) ============
+  // Per product decision: deleting an activity KEEPS its Leads and WeChat
+  // records (they become unassigned) — no lead data is lost.
+  async deleteActivity(actId) {
+    await db.collection('activities').doc(actId).delete();
+  },
+
+  async deleteActivities(actIds) {
+    for (const id of actIds) {
+      await this.deleteActivity(id);
+    }
+  },
+
+  // Deleting an adviser:
+  //  - removes the UID from every activity's assignedAdvisers array (cleanup)
+  //  - deletes the user document (security rules then block app access)
+  //  - KEEPS their Leads and WeChat records (shown as unassigned)
+  // Note: the Firebase Auth account itself is NOT removed here (needs Admin SDK /
+  // Console), but without a users doc the account has no role and cannot use the app.
+  async deleteAdviser(uid) {
+    const acts = await this.getActivities();
+    for (const a of acts) {
+      const arr = a.assignedAdvisers || [];
+      if (arr.includes(uid)) {
+        await this.updateActivity(a.id, { assignedAdvisers: arr.filter(x => x !== uid) });
+      }
+    }
+    await db.collection('users').doc(uid).delete();
+  },
+
+  async deleteAdvisers(uids) {
+    for (const uid of uids) {
+      await this.deleteAdviser(uid);
+    }
+  },
+
   // ============ LEADS ============
   async getLeads(filters = {}, pageSize = 50, startAfterDoc = null) {
     let query = db.collection('leads');

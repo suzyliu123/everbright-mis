@@ -34,6 +34,10 @@ const S = {
   // Toast messages
   toast: null,
   toastTimer: null,
+
+  // Bulk-selection sets (Activities / Advisers delete feature)
+  selActs: [],
+  selAdvs: [],
 };
 
 // ============ MAIN RENDER LOOP ============
