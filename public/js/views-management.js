@@ -800,7 +800,7 @@ async function showNewActivityModal() {
         </div>
         <div class="form-group">
           <label>Marketing Budget (NZD)</label>
-          <input type="number" id="act-budget" placeholder="5000" min="0" step="100">
+          <input type="number" id="act-budget" placeholder="5000" min="0" step="any">
         </div>
         <div class="form-group">
           <label>Description</label>
@@ -913,7 +913,7 @@ async function saveNewActivity() {
   const startDate = document.getElementById('act-start').value;
   const endDate = document.getElementById('act-end').value;
   const location = document.getElementById('act-location').value.trim();
-  const budget = parseInt(document.getElementById('act-budget').value) || 0;
+  const budget = parseFloat(document.getElementById('act-budget').value) || 0;
   const description = document.getElementById('act-description').value.trim();
 
   const assignedAdvisers = [];
@@ -1000,7 +1000,7 @@ async function showEditActivityModal(actId) {
         </div>
         <div class="form-group">
           <label>Marketing Budget (NZD)</label>
-          <input type="number" id="act-budget" placeholder="5000" min="0" step="100" value="${activity.budget || 0}">
+          <input type="number" id="act-budget" placeholder="5000" min="0" step="any" value="${activity.budget || 0}">
         </div>
         <div class="form-group">
           <label>Status</label>
@@ -1048,7 +1048,7 @@ async function saveEditActivity(actId) {
   const startDate = document.getElementById('act-start').value;
   const endDate = document.getElementById('act-end').value;
   const location = document.getElementById('act-location').value.trim();
-  const budget = parseInt(document.getElementById('act-budget').value) || 0;
+  const budget = parseFloat(document.getElementById('act-budget').value) || 0;
   const description = document.getElementById('act-description').value.trim();
 
   const assignedAdvisers = [];
