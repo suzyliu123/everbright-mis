@@ -28,8 +28,13 @@ service cloud.firestore {
     match /users/{userId} {
       // Any signed-in user can read the users list (needed for adviser dropdowns)
       allow get, list: if isSignedIn();
-      // Admin or Management can create/update/delete users
-      allow create, update, delete: if hasMgmtAccess();
+      // Admin or Management can create/update/delete users.
+      // A freshly-created user may also create their OWN record (role restricted
+      // to 'adviser') so the in-app "Add Adviser" flow can write the doc while
+      // temporarily signed in as the new user.
+      allow create: if hasMgmtAccess() ||
+        (request.auth.uid == userId && request.resource.data.role == 'adviser');
+      allow update, delete: if hasMgmtAccess();
     }
 
     // ============ ACTIVITIES ============

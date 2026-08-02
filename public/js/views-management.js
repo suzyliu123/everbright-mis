@@ -428,6 +428,7 @@ async function renderMgmtAdvisers() {
 
   return `
   <div class="page-head"><h2>Advisers</h2><div class="ph-actions">
+    <button class="btn btn-primary btn-sm" onclick="showAddAdviserModal()">+ Add</button>
     <button class="btn btn-danger btn-sm" id="delAdvsBtn" onclick="confirmDeleteAdvisers()" ${(S.selAdvs||[]).length ? '' : 'disabled'}>&#128465; Delete${(S.selAdvs||[]).length ? ' ('+(S.selAdvs||[]).length+')' : ''}</button>
   </div></div>
 
@@ -833,6 +834,76 @@ async function showNewActivityModal() {
 function closeModal() {
   const el = document.getElementById('modal-overlay');
   if (el) el.remove();
+}
+
+// ============ ADD ADVISER MODAL ============
+function showAddAdviserModal() {
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <h3><button class="modal-close" onclick="closeModal()">&times;</button>Add New Adviser</h3>
+      <form onsubmit="event.preventDefault(); saveAddAdviser();">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" id="adv-name" placeholder="e.g. John Smith" required>
+        </div>
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" id="adv-email" placeholder="e.g. john@everbright.co.nz" required>
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <div class="seg" id="adv-type-seg">
+            <div class="seg-item active" data-value="loan" onclick="selSeg(this)">Loan</div>
+            <div class="seg-item" data-value="insurance" onclick="selSeg(this)">Insurance</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Initial Password *</label>
+          <input type="text" id="adv-password" value="EverBright2026!" required>
+          <small style="color:var(--text-muted);font-size:12px">New adviser logs in with this email &amp; password. Min 6 characters.</small>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn-save" id="adv-save-btn">Create Adviser</button>
+        </div>
+      </form>
+    </div>`;
+  overlay.addEventListener('click', closeModal);
+  document.body.appendChild(overlay);
+}
+
+async function saveAddAdviser() {
+  const displayName = document.getElementById('adv-name').value.trim();
+  const email = document.getElementById('adv-email').value.trim();
+  const type = getSegValue('adv-type-seg') || 'loan';
+  const password = document.getElementById('adv-password').value;
+
+  if (!displayName) { showToast('Please enter a name', 'error'); return; }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Please enter a valid email', 'error'); return; }
+  if (!password || password.length < 6) { showToast('Password must be at least 6 characters', 'error'); return; }
+
+  const btn = document.getElementById('adv-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
+
+  try {
+    const res = await Auth.createAdviserAccount({ displayName, email, password, type });
+    if (!res.success) {
+      showToast('Failed to add adviser: ' + res.error, 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Create Adviser'; }
+      return;
+    }
+    if (res.warning) showToast(res.warning, 'info');
+    closeModal();
+    showToast(`Adviser "${displayName}" added successfully`, 'success');
+    render();
+  } catch (err) {
+    showToast('Failed to add adviser: ' + err.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Create Adviser'; }
+  }
 }
 
 async function saveNewActivity() {
