@@ -26,8 +26,11 @@ service cloud.firestore {
 
     // ============ USERS / ADVISERS ============
     match /users/{userId} {
-      // Any signed-in user can read the users list (needed for adviser dropdowns)
-      allow get, list: if isSignedIn();
+      // Anonymous `get` of a SINGLE user doc is allowed so the public QR capture
+      // page can show the adviser's name. `list` stays restricted to signed-in
+      // users so the adviser directory cannot be enumerated publicly.
+      allow get: if true;
+      allow list: if isSignedIn();
       // Admin or Management can create/update/delete users.
       // A freshly-created user may also create their OWN record (role restricted
       // to 'adviser') so the in-app "Add Adviser" flow can write the doc while
@@ -48,8 +51,23 @@ service cloud.firestore {
       // Mgmt: full access. Adviser: read/write only own assigned leads
       allow get, list: if hasMgmtAccess() ||
         (isAdviser() && resource.data.assignedAdviser == request.auth.uid);
+
+      // Public QR capture: anonymous clients may CREATE a lead, but ONLY under
+      // strict constraints so they cannot tamper with attribution or fake revenue:
+      //  - status must be 'new'
+      //  - assignedAdviser must point to a REAL adviser account (role check)
+      //  - settlementAmount / annualPremium must be 0 (no fake commission)
+      //  - method/channel fixed to 'QR Code'
       allow create: if hasMgmtAccess() ||
-        (isAdviser() && request.resource.data.assignedAdviser == request.auth.uid);
+        (isAdviser() && request.resource.data.assignedAdviser == request.auth.uid) ||
+        (request.auth == null
+          && request.resource.data.status == 'new'
+          && request.resource.data.assignedAdviser == request.resource.data.assignedAdviser
+          && get(/databases/$(database)/documents/users/$(request.resource.data.assignedAdviser)).data.role == 'adviser'
+          && request.resource.data.firstTouch.method == 'QR Code'
+          && (request.resource.data.settlementAmount == 0 || request.resource.data.settlementAmount == null)
+          && (request.resource.data.annualPremium == 0 || request.resource.data.annualPremium == null));
+
       allow update: if hasMgmtAccess() ||
         (isAdviser() && resource.data.assignedAdviser == request.auth.uid);
       allow delete: if isAdmin();

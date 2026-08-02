@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>EverBright Finance — Leave Your Details</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { background: linear-gradient(160deg, #1e40af 0%, #2563eb 55%, #3b82f6 100%); min-height: 100vh; }
+    .cap-wrap { max-width: 480px; margin: 0 auto; padding: 28px 18px 40px; }
+    .cap-brand { text-align: center; color: #fff; margin-bottom: 18px; }
+    .cap-brand .logo { width: 64px; height: 64px; border-radius: 16px; background: #fff; padding: 8px; margin: 0 auto 10px; }
+    .cap-brand h1 { font-size: 20px; font-weight: 700; margin: 0; letter-spacing: .3px; }
+    .cap-brand p { font-size: 13px; opacity: .85; margin: 4px 0 0; }
+    .cap-card { background: #fff; border-radius: 18px; padding: 22px 20px; box-shadow: 0 12px 30px rgba(15,23,42,.25); }
+    .cap-greet { text-align: center; margin-bottom: 16px; }
+    .cap-greet .who { font-size: 17px; font-weight: 600; color: #0f172a; }
+    .cap-greet .sub { font-size: 13px; color: #64748b; margin-top: 2px; }
+    .cap-fg { margin-bottom: 14px; }
+    .cap-fl { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; }
+    .cap-ft, .cap-sel {
+      width: 100%; box-sizing: border-box; padding: 12px 14px; font-size: 15px;
+      border: 1.5px solid #e2e8f0; border-radius: 12px; outline: none; font-family: inherit;
+      transition: border-color .15s;
+    }
+    .cap-ft:focus, .cap-sel:focus { border-color: #2563eb; }
+    .cap-seg { display: flex; gap: 8px; }
+    .cap-seg .si {
+      flex: 1; text-align: center; padding: 12px 0; border: 1.5px solid #e2e8f0;
+      border-radius: 12px; font-size: 14px; font-weight: 600; color: #475569; background: #f8fafc;
+      cursor: pointer; user-select: none; transition: all .15s;
+    }
+    .cap-seg .si.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .cap-btn {
+      width: 100%; padding: 15px; font-size: 16px; font-weight: 700; color: #fff;
+      background: #2563eb; border: none; border-radius: 12px; cursor: pointer; margin-top: 6px;
+    }
+    .cap-btn:active { background: #1d4ed8; }
+    .cap-note { font-size: 11px; color: #64748b; text-align: center; margin-top: 14px; line-height: 1.5; }
+    .cap-done { text-align: center; padding: 20px 0; }
+    .cap-done .check { width: 72px; height: 72px; border-radius: 50%; background: #dcfce7; color: #16a34a;
+      font-size: 40px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+    .cap-done h2 { font-size: 20px; color: #0f172a; margin: 0 0 6px; }
+    .cap-done p { font-size: 14px; color: #64748b; }
+    .cap-err { background: #fef2f2; color: #b91c1c; font-size: 13px; padding: 10px 12px;
+      border-radius: 10px; margin-bottom: 12px; display: none; }
+    input::placeholder { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="cap-wrap">
+    <div class="cap-brand">
+      <img class="logo" src="" id="brand-logo" alt="EverBright">
+      <h1>EverBright Finance</h1>
+      <p>Mortgage &amp; Insurance Advisers · New Zealand</p>
+    </div>
+
+    <div class="cap-card" id="form-card">
+      <div class="cap-greet">
+        <div class="who" id="greet-name">Leave your details</div>
+        <div class="sub" id="greet-sub">We'll get back to you shortly. Your info stays with us.</div>
+      </div>
+
+      <div class="cap-err" id="cap-err"></div>
+
+      <div class="cap-fg">
+        <label class="cap-fl">Your Name *</label>
+        <input class="cap-ft" id="c-name" placeholder="e.g. John Smith" autocomplete="name">
+      </div>
+      <div class="cap-fg">
+        <label class="cap-fl">Phone Number *</label>
+        <input class="cap-ft" id="c-phone" placeholder="021 123 4567" inputmode="tel" autocomplete="tel">
+      </div>
+      <div class="cap-fg">
+        <label class="cap-fl">WeChat (optional)</label>
+        <input class="cap-ft" id="c-wechat" placeholder="WeChat ID">
+      </div>
+      <div class="cap-fg">
+        <label class="cap-fl">Email (optional)</label>
+        <input class="cap-ft" id="c-email" placeholder="you@email.com" inputmode="email" autocomplete="email">
+      </div>
+      <div class="cap-fg">
+        <label class="cap-fl">I'm interested in</label>
+        <div class="cap-seg" id="c-interest">
+          <div class="si active" data-v="Loan" onclick="capSel(this)">Loan</div>
+          <div class="si" data-v="Insurance" onclick="capSel(this)">Insurance</div>
+          <div class="si" data-v="Both" onclick="capSel(this)">Both</div>
+        </div>
+      </div>
+      <div class="cap-fg">
+        <label class="cap-fl">Anything else? (optional)</label>
+        <input class="cap-ft" id="c-note" placeholder="e.g. looking to refinance">
+      </div>
+
+      <button class="cap-btn" id="c-submit" onclick="capSubmit()">Submit</button>
+      <div class="cap-note">By submitting, you agree to be contacted by EverBright Finance about financial products. Your details are securely stored and handled per NZ privacy law.</div>
+    </div>
+
+    <div class="cap-card" id="done-card" style="display:none">
+      <div class="cap-done">
+        <div class="check">&#10003;</div>
+        <h2>Thank you!</h2>
+        <p>Your details have been received. <span id="done-who">Our adviser</span> will be in touch soon.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK (Compat CDN) -->
+  <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore-compat.js"></script>
+  <script src="/js/firebase-init.js"></script>
+
+  <script>
+    const LOGO_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAAKcklEQVR42u1Ye3QU5RW/95uZnZl95/0mIYGQ8G5JeGmJwEEj+OhR5IjUB6itQquiHql42opiT6VHlFqstqcKitpDpfgAixpEAk0ACwTSQCQP8n7tZrPL7uxjZr7v6x8bQgi0tdrWf3rP/jFz5s69d+793d+93yLnHL4JIfANyVdxzDl8/SyJX1KP8Qs1EQgCgMk4AgAAIhDEEfomG9SOPxgRKEHAr1DjiGFKAopE+O9+MecACI19wRZvxB82gjFj/YdNkoAry3ITrJJDEYvSbcUZriFlRAjr5tO7vwjrEIyZDkXQDbMvZGS5VIuIWox2BaJXFCR8GcecIN7/Vu3eWs+SGZmpDsvS0iyDsmNt/lCMft56rj+kN66fm+FSh3LHOD8XMQ42+SdnO1PtikNRU0LGtsMdZ3u+fmTs9zjU5WBh1TxhGAELz0cwnBNp/Wr+nNG+bnuJXbXz3+4tIpw1Vu2Hyo0x/JcKkceLzYdlnafNvUjRVnRiVYp+clvH+y52CDr3S0e1Z+Ql9Qb/dFVs/PFynjBDGOF84BgOMwpDDOBcQOf8Qw6RPv1h9o8Hd0Bmu7QivLcsekqs9XtIR1NqDFPm8JlOQmxovCOEfAhr7g4+82KKIwNdt+a2lmkyf03C3TmjyRfWf8P/Zs2IyMe6y8nS7RRBmFmaeh+EQ/BAAslzq/WWjXaoUiJirrsqdmGlv9Wmjk22/uGl8S3+4rvPc2FRbHN7nkwTP722WiFC9ZmaHL8KRhHUW1lnUYP6woUjEKgnix6c7Xvn01MfVjZKA0/OTN909tz7bOV7XIVu5SbZVV+W39muhqH5fWUFNu//mV442PZMZM8y8JOXGKRlDUVLGBYJ763tfrmiZOylFkYTtx3rmj0uO6OzJXY2ZTkujJ2IyMqOM3Py7yg9OdNgtopXDR/vPnGnrR4DhPRa/bOkPzXz2YLJdBYCHttf9aG5ettu643jXlRuq2nwaZZxxHvfNAdKdyqMLRydapVZfpDugn+nTbBZ8dEH+9+fk3jEzcyBsDGgGSXSryQ6FhyJUi6pkySKJI3gDALYdaitau+/aiamLp2X+6tPmU92hDTcXA8DPritSLeK6XQ0CwXh8iMAYn5DpWlKSXdk48PD20zGDTRvlmpTlenJX/caKps2ftc0Z45YEJKGgHotRIstEURi5DJ8gQoJNerS84KnrC1e+deLB12s9IfOKDVV3vHp05/GO0jz3q5VtDX1BgWA8Sg7AORxs8nn9MYcirrgiSxRIqtPiVqWnbyi0SmiVhJhJRWZSwhhwQEEgFgsIZBjTDYJr0aSMRZMyKhv6GOPPfW9CulN2q1J2glqYZp8zGvm+bSdNeiFcARERFk1MvXpdyoRMFwBc/UJVikPeuvzbqQ5lz4Oz7n29Zt8XHlRXva5SZglEiID+UHTHE9eXl+THMTI84ZRxSSCX5fB4cOczxQFgqCEp48OZfEgZAEhBopWZDBA4ZSwcBUovZXWCeFmvHC4YRYz/cDgNCATJGpZlw70CgBjP3OI1b1Qr0RjTDTQAx0=';
+    document.getElementById('brand-logo').src = LOGO_ICON;
+
+    // ---- Read params ----
+    const params = new URLSearchParams(location.search);
+    const ADV_UID = params.get('adv');
+    const ADV_NAME = (params.get('n') || '').trim();
+
+    function capSel(el) {
+      el.parentElement.querySelectorAll('.si').forEach(e => e.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function showErr(msg) {
+      const e = document.getElementById('cap-err');
+      e.textContent = msg;
+      e.style.display = 'block';
+    }
+
+    // ---- Greet the customer with the adviser's name (if available) ----
+    async function initGreet() {
+      if (ADV_NAME) {
+        document.getElementById('greet-name').textContent = ADV_NAME + ' · EverBright Finance';
+        document.getElementById('done-who').textContent = ADV_NAME;
+        return;
+      }
+      if (ADV_UID) {
+        try {
+          const doc = await db.collection('users').doc(ADV_UID).get();
+          if (doc.exists) {
+            const n = doc.data().displayName || 'Our adviser';
+            document.getElementById('greet-name').textContent = n + ' · EverBright Finance';
+            document.getElementById('done-who').textContent = n;
+          }
+        } catch (e) { /* ignore — keep generic greeting */ }
+      }
+    }
+    initGreet();
+
+    if (!ADV_UID) {
+      document.getElementById('form-card').style.display = 'none';
+      const c = document.createElement('div');
+      c.className = 'cap-card';
+      c.innerHTML = '<div class="cap-done"><div class="check" style="background:#fee2e2;color:#dc2626">!</div><h2>Invalid link</h2><p>This QR code is not configured correctly. Please scan the code from your adviser again.</p></div>';
+      document.querySelector('.cap-wrap').appendChild(c);
+    }
+
+    async function capSubmit() {
+      const btn = document.getElementById('c-submit');
+      document.getElementById('cap-err').style.display = 'none';
+
+      const name = document.getElementById('c-name').value.trim();
+      const phone = document.getElementById('c-phone').value.trim();
+      const wechat = document.getElementById('c-wechat').value.trim();
+      const email = document.getElementById('c-email').value.trim();
+      const note = document.getElementById('c-note').value.trim();
+      const interestEl = document.querySelector('#c-interest .si.active');
+      const interest = interestEl ? interestEl.dataset.v : 'Loan';
+
+      if (!name) { showErr('Please enter your name.'); return; }
+      if (!phone) { showErr('Please enter your phone number.'); return; }
+      if (!ADV_UID) { showErr('This form is not linked to an adviser.'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Submitting…';
+
+      const today = new Date().toISOString().slice(0, 10);
+      const leadData = {
+        name, phone, wechat, email,
+        interest,
+        activityId: null,
+        status: 'new',
+        assignedAdviser: ADV_UID,
+        firstTouch: { channel: 'QR Code', date: today, method: 'QR Code' },
+        touchpoints: [{ channel: 'QR Code', date: today }],
+        settlementAmount: 0,
+        annualPremium: 0,
+        lender: '',
+        insurer: '',
+        notes: [{ date: today, author: 'QR Capture', content: note || 'Lead captured via QR code.' }],
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        await db.collection('leads').add(leadData);
+        document.getElementById('form-card').style.display = 'none';
+        document.getElementById('done-card').style.display = 'block';
+      } catch (err) {
+        console.error(err);
+        showErr('Something went wrong. Please try again or contact us directly. (' + (err.message || 'error') + ')');
+        btn.disabled = false;
+        btn.textContent = 'Submit';
+      }
+    }
+  </script>
+</body>
+</html>

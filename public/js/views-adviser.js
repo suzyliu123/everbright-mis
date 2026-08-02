@@ -680,7 +680,10 @@ async function renderAdviserQR() {
   const uid = Auth.currentUser.uid;
   const user = Auth.userProfile || {};
   const qrId = user.qrId || uid;
-  const link = 'https://mis.everbright.co.nz/qr/' + qrId;
+  const base = (location.hostname.endsWith('web.app') || location.hostname.endsWith('firebaseapp.com'))
+    ? location.origin
+    : 'https://everbright-mis-dev.web.app';
+  const link = base + '/capture.html?adv=' + encodeURIComponent(qrId) + '&n=' + encodeURIComponent(Auth.displayName());
   const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=' + encodeURIComponent(link);
 
   return adviserHeader('My QR Code') +
@@ -699,9 +702,9 @@ async function renderAdviserQR() {
   </div>
   <div class="card" style="text-align:left">
     <div class="section-title">How to use</div>
-    <div class="ts tg mb2">1. Show this QR code to customers at events</div>
-    <div class="ts tg mb2">2. They scan it and fill in their info</div>
-    <div class="ts tg mb2">3. Lead auto-attributed to you with this activity</div>
+    <div class="ts tg mb2">1. Show this QR code to customers at events or in WeChat</div>
+    <div class="ts tg mb2">2. They scan it and fill in their contact info</div>
+    <div class="ts tg mb2">3. The lead is auto-saved under YOUR account instantly</div>
   </div>
   </div>`;
 }
