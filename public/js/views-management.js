@@ -266,6 +266,23 @@ async function renderMgmtActivitySummary(actId) {
   }
   advPerf.sort((a, b) => b.settlementAmount - a.settlementAmount);
 
+  // WeChat aggregated by adviser (per-activity breakdown)
+  const wcMap = {};
+  weChatRecords.forEach(r => {
+    const key = r.adviserId || r.adviserName || 'unknown';
+    if (!wcMap[key]) wcMap[key] = { id: key, name: r.adviserName || '—', count: 0, logs: 0 };
+    wcMap[key].count += (r.count || 0);
+    wcMap[key].logs += 1;
+  });
+  // Include assigned advisers even with 0 records
+  assignedIds.forEach(id => {
+    if (!wcMap[id]) {
+      const adv = advisers.find(a => (a.uid || a.id) === id);
+      wcMap[id] = { id, name: adv ? adv.displayName : (id || '—'), count: 0, logs: 0 };
+    }
+  });
+  const wcRows = Object.values(wcMap).sort((a, b) => b.count - a.count);
+
   return `
   <div class="page-head"><h2>${esc(activity.name)}</h2><div>
     <button class="btn btn-ghost btn-sm" onclick="Router.goBack()">&#8592; Back</button>
@@ -311,6 +328,24 @@ async function renderMgmtActivitySummary(actId) {
           <td>${a.total}</td><td>${a.submitted}</td><td style="color:var(--success)">${a.settled}</td>
           <td>${fmtM(a.settlementAmount)}</td><td>${fmtMF(a.totalPremium)}</td>
         </tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>` : ''}
+
+  ${wcRows.length > 0 ? `<div class="card">
+    <div class="section-title">WeChat by Adviser (${totalWeChat} total)</div>
+    <div class="data-table" style="width:100%;overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr><th>Adviser</th><th>WeChat Count</th><th>Log Entries</th><th style="width:40%">Share</th></tr></thead>
+        <tbody>${wcRows.map(r => {
+          const pct = totalWeChat ? Math.round(r.count / totalWeChat * 100) : 0;
+          return `<tr>
+            <td style="font-weight:500">${esc(r.name)}</td>
+            <td style="color:var(--teal);font-weight:600">${r.count}</td>
+            <td>${r.logs}</td>
+            <td><div style="display:flex;align-items:center;gap:8px"><div style="background:var(--g100);border-radius:6px;height:8px;flex:1;overflow:hidden"><div style="background:var(--teal);height:100%;width:${pct}%"></div></div><span style="font-size:11px;color:var(--g500);white-space:nowrap">${pct}%</span></div></td>
+          </tr>`;
+        }).join('')}</tbody>
       </table>
     </div>
   </div>` : ''}
