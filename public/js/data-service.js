@@ -164,6 +164,23 @@ const DataService = {
     });
   },
 
+  // Adviser manually links a lead (e.g. one captured via QR code) to an activity.
+  // Appends a note so the attribution change is auditable. Pass actId = null to unassign.
+  async assignLeadToActivity(leadId, actId, note) {
+    const lead = await this.getLead(leadId);
+    const notes = lead.notes || [];
+    notes.push({
+      date: new Date().toISOString().slice(0, 10),
+      author: Auth.displayName(),
+      content: note
+    });
+    await db.collection('leads').doc(leadId).update({
+      activityId: actId,
+      notes: notes,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  },
+
   async getLeadsByActivity(actId) {
     return (await this.getLeads({ activityId: actId }, 200)).leads;
   },

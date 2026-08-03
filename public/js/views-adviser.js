@@ -119,7 +119,10 @@ async function renderAdviserLeads() {
   const { leads } = await DataService.getLeads({}, 200);
   const myLeads = leads || [];
   const filter = S.leadFilter || 'all';
-  const filtered = filter === 'all' ? myLeads : myLeads.filter(l => l.status === filter);
+  const unassignedCount = myLeads.filter(l => !l.activityId).length;
+  const filtered = filter === 'all' ? myLeads
+    : filter === 'unassigned' ? myLeads.filter(l => !l.activityId)
+    : myLeads.filter(l => l.status === filter);
 
   let html = adviserHeader('My Leads') +
   `<div class="content">
@@ -129,6 +132,7 @@ async function renderAdviserLeads() {
     <div class="tab ${filter === 'submitted' ? 'active' : ''}" onclick="S.leadFilter='submitted';render()">Submitted</div>
     <div class="tab ${filter === 'settled' ? 'active' : ''}" onclick="S.leadFilter='settled';render()">Settled</div>
     <div class="tab ${filter === 'lost' ? 'active' : ''}" onclick="S.leadFilter='lost';render()">Lost</div>
+    <div class="tab ${filter === 'unassigned' ? 'active' : ''}" onclick="S.leadFilter='unassigned';render()">Unassigned (${unassignedCount})</div>
   </div>`;
 
   if (filtered.length > 0) {
@@ -382,6 +386,18 @@ async function renderAdviserLeadDetail(leadId) {
     ${settleBtn}
   </div>
 
+  <div class="card" style="background:var(--primary-light);border:none">
+    <div class="flex aic jb">
+      <div>
+        <div class="ts tg">Activity</div>
+        <div class="fb mt2">${lead.activityId ? esc(actName) : 'Not assigned yet'}</div>
+        ${lead.activityId ? '' : '<div class="ts tg mt2">Assign this lead to an activity for ROI tracking</div>'}
+      </div>
+      <div style="font-size:30px">&#128197;</div>
+    </div>
+    <button class="btn btn-primary btn-sm mt4" style="width:100%" onclick="openAssignActivityModal('${lead.id}','${lead.activityId || ''}')">${lead.activityId ? 'Change Activity' : 'Assign to Activity'}</button>
+  </div>
+
   <div class="card">
     <div class="section-title">Notes (${notesArr.length})</div>
     <div class="tl">${notesHtml}</div>
@@ -603,7 +619,9 @@ async function renderAdviserActivityLeads(actId) {
         (l.settlementAmount ? '<span class="chip">' + fmtMF(l.settlementAmount) + '</span>' : '') +
         (l.annualPremium ? '<span class="chip">Ins ' + fmtMF(l.annualPremium) + '/yr</span>' : '') +
         '<span class="chip">' + interestLabel(l.interest) + '</span>' +
-        `</div></div>`;
+        `</div>` +
+        (!l.activityId ? `<div class="flex jb aic mt2"><span class="chip" style="background:rgba(245,158,11,.15);color:#b45309">Unassigned</span><button class="btn btn-outline btn-sm" style="padding:6px 12px;font-size:13px" onclick="event.stopPropagation(); openAssignActivityModal('${l.id}','')">Assign Activity</button></div>` : '') +
+        `</div>`;
     }
   } else {
     html += `<div class="empty"><div class="ic">&#128172;</div>No leads for this activity yet</div>`;
@@ -672,6 +690,54 @@ async function saveWeChatLog(actId) {
     render();
   } catch (err) {
     showToast('Failed to save: ' + err.message, 'error');
+  }
+}
+
+// ============ ASSIGN LEAD TO ACTIVITY (Adviser) ============
+async function openAssignActivityModal(leadId, currentActId) {
+  closeModal();
+  const acts = await DataService.getActivities({});
+  const actsSorted = acts.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const opts = `<option value="">— No activity (remove) —</option>` +
+    actsSorted.map(a => `<option value="${a.id}" ${a.id === currentActId ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <h3><button class="modal-close" onclick="closeModal()">&times;</button>Assign to Activity</h3>
+      <p class="ts tg" style="margin:0 0 16px">Choose which activity this lead belongs to. This links the lead to a campaign so its ROI can be tracked.</p>
+      <div class="form-group">
+        <label>Activity</label>
+        <select id="assign-act">${opts}</select>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn-save" onclick="saveAssignActivity('${leadId}')">Save</button>
+      </div>
+    </div>`;
+  overlay.addEventListener('click', closeModal);
+  document.body.appendChild(overlay);
+  setTimeout(() => { const s = document.getElementById('assign-act'); if (s) s.focus(); }, 50);
+}
+
+async function saveAssignActivity(leadId) {
+  const actId = document.getElementById('assign-act').value || null;
+  let note;
+  if (actId) {
+    const act = await DataService.getActivity(actId);
+    note = 'Assigned to activity: ' + (act ? act.name : actId);
+  } else {
+    note = 'Removed activity assignment';
+  }
+  try {
+    await DataService.assignLeadToActivity(leadId, actId, note);
+    closeModal();
+    showToast(actId ? 'Lead linked to activity' : 'Activity unlinked');
+    render();
+  } catch (err) {
+    showToast('Failed to assign: ' + err.message, 'error');
   }
 }
 
