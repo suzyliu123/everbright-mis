@@ -492,8 +492,10 @@ async function renderMgmtAdviserProfile(advId) {
   const actMap = {};
   allLeads.forEach(l => {
     const aid = l.activityId;
+    if (!aid) return; // unassigned lead (e.g. captured via QR) — skip activity grouping
     if (!actMap[aid]) {
       const act = activities.find(a => a.id === aid);
+      if (!act) return; // orphan activity reference — skip to avoid crash
       actMap[aid] = { act, leads: [], settled: 0, settlementAmount: 0, weChat: weChatRecords.filter(w => w.activityId === aid && w.adviserId === advId).reduce((sum, r) => sum + (r.count||0), 0) };
     }
     actMap[aid].leads.push(l);
@@ -505,7 +507,11 @@ async function renderMgmtAdviserProfile(advId) {
       actMap[a.id] = { act: a, leads: [], settled: 0, settlementAmount: 0, weChat: 0 };
     }
   });
-  const actList = Object.values(actMap).sort((a, b) => new Date(b.act.startDate) - new Date(a.act.startDate));
+  const actList = Object.values(actMap).sort((a, b) => {
+    const da = a.act && a.act.startDate ? new Date(a.act.startDate) : 0;
+    const db = b.act && b.act.startDate ? new Date(b.act.startDate) : 0;
+    return db - da;
+  });
 
   return `
   <div class="page-head"><h2>${esc(adviser.displayName)}</h2><div>
