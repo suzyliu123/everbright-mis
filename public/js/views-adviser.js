@@ -162,19 +162,17 @@ async function renderAdviserLeads() {
 async function renderAdviserAddLead() {
   const uid = Auth.currentUser.uid;
   const allActs = await DataService.getActivities({ status: 'active' });
-  // Find activities assigned to this adviser that are events
-  const myActiveEvents = allActs.filter(a => {
-    const advisers = a.assignedAdvisers || [];
-    return advisers.includes(uid) && a.category === 'event';
-  });
+  // Only activities this adviser is assigned to — they choose their source activity
+  const myActs = allActs.filter(a => (a.assignedAdvisers || []).includes(uid));
 
   let sourceOpts;
-  if (myActiveEvents.length === 1) {
-    sourceOpts = `<input class="fi" value="${esc(myActiveEvents[0].name)}" disabled style="background:var(--g100)" data-actid="${myActiveEvents[0].id}">`;
+  if (myActs.length === 0) {
+    sourceOpts = `<select class="fs" id="lf-activity"><option value="">— No activity —</option></select>
+      <div class="ts tg mt2">You have no assigned activities, so this lead will be saved without a source activity.</div>`;
   } else {
-    sourceOpts = `<select class="fs" id="lf-activity"><option value="">— Select activity —</option>` +
-      allActs.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('') +
-      `</select>`;
+    const opts = myActs.map((a, i) => `<option value="${a.id}"${i === 0 ? ' selected' : ''}>${esc(a.name)}</option>`).join('');
+    sourceOpts = `<select class="fs" id="lf-activity"><option value="">— Select activity —</option>${opts}</select>
+      ${myActs.length === 1 ? '<div class="ts tg mt2">Auto-selected from your assigned activity (you can change or clear it)</div>' : ''}`;
   }
 
   const advName = Auth.displayName();
@@ -189,9 +187,7 @@ async function renderAdviserAddLead() {
   </div>
 
   <div class="card">
-    <div class="fg"><label class="fl">Source Activity</label>${sourceOpts}
-    ${myActiveEvents.length === 1 ? '<div class="ts tg mt2">Auto-detected from your active activity</div>' : ''}
-    </div>
+    <div class="fg"><label class="fl">Source Activity</label>${sourceOpts}</div>
 
     <div class="fg"><label class="fl">Interested In</label>
     <div class="seg" id="interest-seg">
@@ -231,17 +227,11 @@ async function submitAdviserLead() {
   const interestEl = document.querySelector('#interest-seg .seg-item.active');
   const interest = interestEl ? interestEl.dataset.v : 'Loan';
 
-  // Determine activity and source channel
+  // Determine activity and source channel (only from the adviser's assigned activities)
   let activityId = null;
   let sourceChannel = 'Manual Entry';
   const sourceInput = document.querySelector('#lf-activity');
-  const autoInput = document.querySelector('.fi[data-actid]');
-
-  if (autoInput) {
-    activityId = autoInput.dataset.actid;
-    const act = await DataService.getActivity(activityId);
-    sourceChannel = act ? act.name : 'Activity Source';
-  } else if (sourceInput && sourceInput.value) {
+  if (sourceInput && sourceInput.value) {
     activityId = sourceInput.value;
     const act = await DataService.getActivity(activityId);
     sourceChannel = act ? act.name : 'Activity Source';
