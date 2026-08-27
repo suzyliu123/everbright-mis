@@ -181,6 +181,27 @@ const DataService = {
     });
   },
 
+  // ============ MANAGEMENT: EDIT / DELETE LEADS ============
+  // Full edit of a lead by management. Appends an audit note when provided.
+  async updateLead(leadId, data, note) {
+    const lead = await this.getLead(leadId);
+    const notes = Array.isArray(lead.notes) ? lead.notes : [];
+    if (note) notes.push({
+      date: new Date().toISOString().slice(0, 10),
+      author: Auth.displayName(),
+      content: note
+    });
+    await db.collection('leads').doc(leadId).update({
+      ...data,
+      notes,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  },
+
+  async deleteLead(leadId) {
+    await db.collection('leads').doc(leadId).delete();
+  },
+
   async getLeadsByActivity(actId) {
     return (await this.getLeads({ activityId: actId }, 200)).leads;
   },

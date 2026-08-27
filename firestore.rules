@@ -70,7 +70,8 @@ service cloud.firestore {
 
       allow update: if hasMgmtAccess() ||
         (isAdviser() && resource.data.assignedAdviser == request.auth.uid);
-      allow delete: if isAdmin();
+      // Management (and admin) may delete leads. Advisers cannot delete (only update their own).
+      allow delete: if hasMgmtAccess();
     }
 
     // ============ WECHAT RECORDS ============

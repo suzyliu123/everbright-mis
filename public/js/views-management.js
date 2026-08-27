@@ -592,7 +592,7 @@ async function renderMgmtLeads() {
   </div>
 
   ${filtered.length ? `<div class="data-table" style="width:100%;overflow-x:auto"><table style="width:100%;border-collapse:collapse">
-    <thead><tr><th>Name</th><th>Phone</th><th>WeChat</th><th>Activity</th><th>Adviser</th><th>Status</th><th>Interest</th><th>Amount</th></tr></thead>
+    <thead><tr><th>Name</th><th>Phone</th><th>WeChat</th><th>Activity</th><th>Adviser</th><th>Status</th><th>Interest</th><th>Amount</th><th>Actions</th></tr></thead>
     <tbody>${filtered.map(l => {
       const st = getStatus(l.status);
       const act = activities.find(a => a.id === l.activityId);
@@ -606,6 +606,7 @@ async function renderMgmtLeads() {
         <td>${badge(st.color, st.label)}</td>
         <td>${INTEREST_TYPES[l.interest] ? INTEREST_TYPES[l.interest].label : l.interest}</td>
         <td>${l.settlementAmount ? fmtM(l.settlementAmount) : l.annualPremium ? fmtMF(l.annualPremium)+'/yr' : '-'}</td>
+        <td style="white-space:nowrap"><span style="cursor:pointer;margin-right:10px;font-size:15px" onclick="event.stopPropagation(); openEditLeadModal('${l.id}')" title="Edit">&#9998;</span><span style="cursor:pointer;color:var(--danger);font-size:15px" onclick="event.stopPropagation(); confirmDeleteLead('${l.id}')" title="Delete">&#128465;</span></td>
       </tr>`;
     }).join('')}</tbody>
   </table></div>` : '<div class="empty"><div class="ic">&#128269;</div>No leads match your filters</div>'}`;
@@ -656,6 +657,8 @@ async function renderLeadDetail(leadId) {
   return `
   <div class="page-head"><h2>${esc(lead.name)}</h2><div>
     <button class="btn btn-ghost btn-sm" onclick="Router.goBack()">&#8592; Back</button>
+    <button class="btn btn-ghost btn-sm" onclick="openEditLeadModal('${lead.id}')">&#9998; Edit</button>
+    <button class="btn btn-danger btn-sm" onclick="confirmDeleteLead('${lead.id}')">&#128465; Delete</button>
     <button class="btn btn-ghost btn-sm" onclick="Router.goHome()">&#8962; Home</button>
   </div></div>
 
@@ -710,6 +713,100 @@ async function quickUpdateLeadStatus(leadId, status) {
     render();
   } catch (err) {
     showToast('Failed to update status: ' + err.message, 'error');
+  }
+}
+
+// ============ MANAGEMENT: EDIT LEAD ============
+async function openEditLeadModal(leadId) {
+  closeModal();
+  const [lead, activities, advisers] = await Promise.all([
+    DataService.getLead(leadId),
+    DataService.getActivities(),
+    DataService.getAdvisers()
+  ]);
+  if (!lead) { showToast('Lead not found', 'error'); return; }
+
+  const actOpts = `<option value="">— None —</option>` + activities.map(a => `<option value="${a.id}" ${a.id === lead.activityId ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
+  const advOpts = advisers.filter(a => a.status !== 'inactive').map(a => `<option value="${a.uid||a.id}" ${(a.uid||a.id) === lead.assignedAdviser ? 'selected' : ''}>${esc(a.displayName)}</option>`).join('');
+  const interestOpts = Object.entries(INTEREST_TYPES).map(([k,v]) => `<option value="${k}" ${k === lead.interest ? 'selected' : ''}>${v.label}</option>`).join('');
+  const statusOpts = Object.entries(STATUSES).map(([k,v]) => `<option value="${k}" ${k === lead.status ? 'selected' : ''}>${v.label}</option>`).join('');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-wide" onclick="event.stopPropagation()">
+      <h3><button class="modal-close" onclick="closeModal()">&times;</button>Edit Lead</h3>
+      <div class="form-group"><label>Name *</label><input id="el-name" value="${esc(lead.name || '')}"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Phone</label><input id="el-phone" value="${esc(lead.phone || '')}"></div>
+        <div class="form-group"><label>WeChat</label><input id="el-wechat" value="${esc(lead.wechat || '')}"></div>
+      </div>
+      <div class="form-group"><label>Email</label><input id="el-email" value="${esc(lead.email || '')}"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Interest</label><select id="el-interest">${interestOpts}</select></div>
+        <div class="form-group"><label>Status</label><select id="el-status">${statusOpts}</select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Activity</label><select id="el-activity">${actOpts}</select></div>
+        <div class="form-group"><label>Adviser</label><select id="el-adviser">${advOpts}</select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Settlement ($)</label><input id="el-settlement" type="number" value="${lead.settlementAmount || ''}"></div>
+        <div class="form-group"><label>Lender</label><input id="el-lender" value="${esc(lead.lender || '')}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Annual Premium ($)</label><input id="el-premium" type="number" value="${lead.annualPremium || ''}"></div>
+        <div class="form-group"><label>Insurer</label><input id="el-insurer" value="${esc(lead.insurer || '')}"></div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn-save" onclick="saveEditLead('${leadId}')">Save Changes</button>
+      </div>
+    </div>`;
+  overlay.addEventListener('click', closeModal);
+  document.body.appendChild(overlay);
+  setTimeout(() => { const e = document.getElementById('el-name'); if (e) e.focus(); }, 50);
+}
+
+async function saveEditLead(leadId) {
+  const name = (document.getElementById('el-name').value || '').trim();
+  if (!name) { showToast('Name is required', 'error'); return; }
+  const data = {
+    name,
+    phone: (document.getElementById('el-phone').value || '').trim(),
+    wechat: (document.getElementById('el-wechat').value || '').trim(),
+    email: (document.getElementById('el-email').value || '').trim(),
+    interest: document.getElementById('el-interest').value,
+    status: document.getElementById('el-status').value,
+    activityId: document.getElementById('el-activity').value || null,
+    assignedAdviser: document.getElementById('el-adviser').value,
+    settlementAmount: parseFloat(document.getElementById('el-settlement').value) || 0,
+    lender: (document.getElementById('el-lender').value || '').trim(),
+    annualPremium: parseFloat(document.getElementById('el-premium').value) || 0,
+    insurer: (document.getElementById('el-insurer').value || '').trim()
+  };
+  try {
+    await DataService.updateLead(leadId, data, 'Lead details edited by ' + Auth.displayName());
+    closeModal();
+    showToast('Lead updated', 'success');
+    render();
+  } catch (err) {
+    showToast('Failed to update: ' + err.message, 'error');
+  }
+}
+
+// ============ MANAGEMENT: DELETE LEAD ============
+async function confirmDeleteLead(leadId) {
+  const ok = confirm('Delete this lead? This cannot be undone.');
+  if (!ok) return;
+  try {
+    await DataService.deleteLead(leadId);
+    showToast('Lead deleted', 'success');
+    if (Router.currentRoute === 'lead-detail') Router.goBack();
+    else render();
+  } catch (err) {
+    showToast('Delete failed: ' + err.message, 'error');
   }
 }
 
